@@ -25,6 +25,7 @@ class User extends Authenticatable
         'password',
         'is_admin',
     ];
+    protected $appends = ['role'];
 
     /**
      * The attributes that should be hidden for serialization.

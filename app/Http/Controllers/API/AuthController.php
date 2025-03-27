@@ -43,9 +43,12 @@ class AuthController extends Controller
             'email' => 'required|email',
             'password' => 'required',
         ]);
-        $user = User::where('email', $request->email)->select('id','name','email','password')->first();
-        if (!$user || !Hash::check($request->password, $user->password)) {
-            return error_res(401, 'The provided credentials are incorrect.');
+        $user = User::where('email', $request->email)->select('id','name','email','password','is_admin')->first();
+        if (!$user) {
+            return error_res(401, 'Email not found.',[]);
+        }
+        if(!Hash::check($request->password, $user->password)){
+            return error_res(401, 'The provided credentials are incorrect.',[]);
         }
         $token = $user->createToken('authToken', [$user->role])->plainTextToken;
         return success_res(200, 'Login successful', ['user' => $user, 'role' => $user->role, 'token' => $token]);

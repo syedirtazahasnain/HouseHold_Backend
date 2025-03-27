@@ -17,7 +17,7 @@ class SuperAdminMiddleware
     public function handle(Request $request, Closure $next): Response
     {
         if (!Auth::check() || Auth::user()->role !== 'super_admin') {
-            return error_res(403 , 'Unauthorized');
+            return error_res(403 , 'Unauthorized Access',[]);
         }
         return $next($request);
     }
