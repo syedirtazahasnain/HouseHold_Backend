@@ -39,10 +39,31 @@ class ProductController extends Controller
      */
     public function store(Request $request)
     {
-        $this->authorize('isAdmin');
+        $admin = auth()->user()->role;
+        if($admin == "user"){
+            return error_res(403, 'Unauthorize access',[]);
+        }
+        // dd('$admin',$admin);
+        $validated_data = $request->validate([
+            'name' => 'required|string|max:255',
+            'detail' => 'required|string',
+            'price' => 'required|numeric|min:0',
+            'image' => 'sometimes|image|mimes:jpeg,png,jpg,gif|max:2048'
+        ]);
 
-        $product = Product::create($request->all());
-        return response()->json($product, 201);
+        if ($request->hasFile('image')) {
+            $image = $request->file('image');
+            $image_name = \Str::random(20) . '.' . $image->getClientOriginalExtension();
+            $path = $image->storeAs('public/products', $image_name);
+            $validated_data['image'] = 'products/' . $image_name;
+        }
+        $identifier = ['id' => $request->input('id')]; // or ['name' => $validated_data['name']]
+        $product = Product::updateOrCreate(
+            $identifier,
+            $validated_data
+        );
+        $was_recently_created = $product->was_recently_created;
+        return success_res(200, $was_recently_created ? 'Product created successfully' : 'Product updated successfully',$product);
     }
 
     /**

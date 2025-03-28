@@ -35,6 +35,7 @@ Route::middleware('auth:sanctum')->group(function () {
     // 🛠 Admin Routes (Only admins & super admins)
     Route::prefix('admin')->middleware('role_admin')->group(function () {
         Route::get('/orders/all', [OrderController::class, 'allOrders']);
+        Route::post('/store-products', [ProductController::class, 'store']);
         Route::get('/dashboard', function () {
             return response()->json(['message' => 'Admin Dashboard']);
         });
