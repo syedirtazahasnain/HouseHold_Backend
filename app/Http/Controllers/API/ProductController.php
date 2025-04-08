@@ -18,7 +18,7 @@ class ProductController extends Controller
         $products = Product::select('id', 'name', 'detail', 'price', 'image')
             ->when($search, function ($query, $search) {
                 return $query->where('name', 'like', "%{$search}%")
-                             ->orWhere('detail', 'like', "%{$search}%");
+                    ->orWhere('detail', 'like', "%{$search}%");
             })
             ->orderBy('id', 'desc')
             ->paginate(50);
@@ -40,8 +40,8 @@ class ProductController extends Controller
     public function store(Request $request)
     {
         $admin = auth()->user()->role;
-        if($admin == "user"){
-            return error_res(403, 'Unauthorize access',[]);
+        if ($admin == "user") {
+            return error_res(403, 'Unauthorize access', []);
         }
         // dd('$admin',$admin);
         $validated_data = $request->validate([
@@ -63,7 +63,7 @@ class ProductController extends Controller
             $validated_data
         );
         $was_recently_created = $product->was_recently_created;
-        return success_res(200, $was_recently_created ? 'Product created successfully' : 'Product updated successfully',$product);
+        return success_res(200, $was_recently_created ? 'Product created successfully' : 'Product updated successfully', $product);
     }
 
     /**
@@ -71,7 +71,9 @@ class ProductController extends Controller
      */
     public function show(string $id)
     {
-        //
+        $product = Product::select('id', 'name', 'detail', 'price', 'image')
+            ->findOrFail($id);
+        return success_res(200, 'Product fetched successfully', $product);
     }
 
     /**

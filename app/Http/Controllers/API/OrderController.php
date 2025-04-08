@@ -16,6 +16,7 @@ class OrderController extends Controller
     {
         $orders = Order::where('user_id', Auth::id())
             ->with('items.product')
+            ->orderBy('id','desc')
             ->paginate(5);
 
         return success_res(200, 'User Order Details', $orders);
@@ -31,6 +32,14 @@ class OrderController extends Controller
     {
         $order = Order::where('user_id', Auth::id())
             ->with('items.product')
+            ->findOrFail($id);
+
+        return success_res(200, 'Order Details', $order);
+    }
+
+    public function showOrderToAdmin($id)
+    {
+        $order = Order::with('items.product')
             ->findOrFail($id);
 
         return success_res(200, 'Order Details', $order);
