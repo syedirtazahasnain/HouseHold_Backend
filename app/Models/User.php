@@ -67,4 +67,9 @@ class User extends Authenticatable
      {
          return $this->createToken('auth_token', [$this->role])->plainTextToken;
      }
+
+    public function getCreatedAtAttribute($value)
+    {
+        return $value ? $this->asDateTime($value)->format('M d, Y') : null;
+    }
 }
