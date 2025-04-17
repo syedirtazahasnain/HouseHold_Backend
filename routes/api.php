@@ -7,7 +7,7 @@ use App\Http\Controllers\API\CartController;
 use App\Http\Controllers\API\GeneralController;
 use App\Http\Controllers\API\OrderController;
 use App\Http\Controllers\API\ProductController;
-
+use App\Http\Controllers\API\SummaryController;
 
 Route::post('register', [AuthController::class, 'register']);
 Route::post('login', [AuthController::class, 'login']);
@@ -39,6 +39,7 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::post('/store-products', [ProductController::class, 'store']);
         Route::get('/products', [ProductController::class, 'index']);
         Route::get('/products/{id}', [ProductController::class, 'show']);
+        Route::post('/employees/import', [SummaryController::class, 'importEmployees'])->name('employees.import');
         Route::get('/dashboard', function () {
             return response()->json(['message' => 'Admin Dashboard']);
         });
