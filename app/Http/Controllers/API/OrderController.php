@@ -8,6 +8,7 @@ use App\Models\OrderItem;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use App\Http\Controllers\Controller;
+use App\Models\User;
 use Illuminate\Support\Facades\Auth;
 
 class OrderController extends Controller
@@ -44,6 +45,12 @@ class OrderController extends Controller
                             }]);
                         }])->paginate(20);
         return success_res(200, 'All Order Details', $orders);
+    }
+
+    public function allUsers()
+    {
+        $users = User::select("id","name","email","emp_id","d_o_j","location","status")->paginate(20);
+        return success_res(200, 'All Users Details', $users);
     }
 
     public function show($id)
