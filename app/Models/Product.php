@@ -13,7 +13,6 @@ class Product extends Model
     public const TYPES = [
         'Flour',
         'Rice',
-        'Sugar',
         'Milk',
         'Oil',
         'Tea',

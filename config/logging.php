@@ -64,6 +64,12 @@ return [
             'level' => 'info',
         ],
 
+        'product_import' => [
+            'driver' => 'single',
+            'path' => storage_path('logs/product_import.log'),
+            'level' => 'info',
+        ],
+
         'single' => [
             'driver' => 'single',
             'path' => storage_path('logs/laravel.log'),

@@ -40,6 +40,7 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/products', [ProductController::class, 'index']);
         Route::get('/products/{id}', [ProductController::class, 'show']);
         Route::post('/employees/import', [SummaryController::class, 'importEmployees'])->name('employees.import');
+        Route::post('/product/import', [SummaryController::class, 'importProduct'])->name('product.import');
         Route::get('/dashboard', function () {
             return response()->json(['message' => 'Admin Dashboard']);
         });
