@@ -35,13 +35,12 @@ class OrderController extends Controller
     public function allOrders()
     {
         $orders = Order::select("id","user_id","order_number","status","discount","grand_total","created_at")
+                                    ->with('user:id,emp_id')
                                     ->with(['items' => function($query){
-                                 $query->select(
-                                    "id","order_id","product_id","quantity","unit_price","price","created_at",
-                                     )->with(['product' => function($query){
-                                $query->select(
-                                    "id","name","detail","price","type","brand","measure","image","status",
-                                );
+                                     $query->select("id","order_id","product_id","quantity","unit_price","price","created_at",)
+                                     ->with(['product' => function($query){
+                                     $query->select("id","name","detail","price","type","brand","measure","image","status",);
+
                             }]);
                         }])->orderBy('id','desc')->paginate(20);
         return success_res(200, 'All Order Details', $orders);
@@ -64,6 +63,7 @@ class OrderController extends Controller
     public function showOrderToAdmin($id)
     {
         $order = Order::select("id","user_id","order_number","status","discount","grand_total","created_at","deleted_at")
+                ->with('user:id,emp_id')
                 ->with(['items' => function($query){
             $query->select(
                     "id","order_id","product_id","quantity","unit_price","price","created_at",
