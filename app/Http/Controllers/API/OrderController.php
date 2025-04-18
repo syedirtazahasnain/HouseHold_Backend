@@ -43,7 +43,7 @@ class OrderController extends Controller
                                     "id","name","detail","price","type","brand","measure","image","status",
                                 );
                             }]);
-                        }])->paginate(20);
+                        }])->orderBy('id','desc')->paginate(20);
         return success_res(200, 'All Order Details', $orders);
     }
 
@@ -93,7 +93,7 @@ class OrderController extends Controller
             if ($max_order_amount && $grand_total > $max_order_amount) {
                 return error_res(403, "Your total order amount {$grand_total} exceeds the maximum allowed order amount of {$max_order_amount}");
             }
-            $discount = ($grand_total >= 2000)? round(10000, 3): round($grand_total / 2, 3);
+            $discount = ($grand_total >= 20000)? round(10000, 3): round($grand_total / 2, 3);
             $discount = min(round($discount, 3), round($grand_total, 3));
             $final_total = round($grand_total - $discount, 2);
 
