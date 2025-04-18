@@ -15,8 +15,12 @@ class ProductController extends Controller
     {
         $search = $request->query('search');
 
-        $products = Product::select('id', 'name', 'detail', 'price', 'image','status')
-            ->where('status',1)
+        $search = $request->query('search');
+        $is_admin_param = $request->has('admin');
+        $products = Product::select('id', 'name', 'detail', 'price', 'image', 'status', 'type','measure')
+            ->when(!$is_admin_param, function ($query) {
+                return $query->where('status', 1);
+            })
             ->when($search, function ($query, $search) {
                 return $query->where('name', 'like', "%{$search}%")
                     ->orWhere('detail', 'like', "%{$search}%");
@@ -40,34 +44,38 @@ class ProductController extends Controller
      */
     public function store(Request $request)
     {
-        $admin = auth()->user()->role;
-        if ($admin == "user") {
-            return error_res(403, 'Unauthorize access', []);
-        }
-        $validated_data = $request->validate([
-            'name' => 'required|string|max:255',
-            'detail' => 'required|string',
-            'price' => 'required|numeric|min:0',
-            'measure' => 'required|string|max:100',
-            'type' => 'required|string|in:' . implode(',', Product::TYPES),
-            'brand' => 'nullable|string|max:255',
-            'image' => 'sometimes|image|mimes:jpeg,png,jpg,gif,webp|max:2048',
-            'status' => 'nullable',
-        ]);
+        try {
+            $admin = auth()->user()->role;
+            if ($admin == "user") {
+                return error_res(403, 'Unauthorize access', []);
+            }
+            $validated_data = $request->validate([
+                'name' => 'required|string|max:255',
+                'detail' => 'required|string',
+                'price' => 'required|numeric|min:0',
+                'measure' => 'required|string|max:100',
+                'type' => 'required|string|in:' . implode(',', Product::TYPES),
+                'brand' => 'nullable|string|max:255',
+                'image' => 'sometimes|image|mimes:jpeg,png,jpg,gif,webp|max:2048',
+                'status' => 'nullable',
+            ]);
 
-        if ($request->hasFile('image')) {
-            $image = $request->file('image');
-            $image_name = \Str::random(20) . '.' . $image->getClientOriginalExtension();
-            $path = $image->storeAs('public/products', $image_name);
-            $validated_data['image'] = 'products/' . $image_name;
+            if ($request->hasFile('image')) {
+                $image = $request->file('image');
+                $image_name = \Str::random(20) . '.' . $image->getClientOriginalExtension();
+                $path = $image->storeAs('public/products', $image_name);
+                $validated_data['image'] = 'products/' . $image_name;
+            }
+            $identifier = ['id' => $request->input('id')];
+            $product = Product::updateOrCreate(
+                $identifier,
+                $validated_data
+            );
+            $was_recently_created = $product->was_recently_created;
+            return success_res(200, $was_recently_created ? 'Product created successfully' : 'Product updated successfully', $product);
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            return error_res(403, 'Validation failed', $e->errors());
         }
-        $identifier = ['id' => $request->input('id')];
-        $product = Product::updateOrCreate(
-            $identifier,
-            $validated_data
-        );
-        $was_recently_created = $product->was_recently_created;
-        return success_res(200,$was_recently_created ? 'Product created successfully' : 'Product updated successfully', $product);
     }
 
     /**
@@ -75,7 +83,7 @@ class ProductController extends Controller
      */
     public function show(string $id)
     {
-        $product = Product::select('id', 'name', 'detail', 'price', 'image','type','brand','measure')
+        $product = Product::select('id', 'name', 'detail', 'price', 'image', 'type', 'brand', 'measure')
             ->findOrFail($id);
         return success_res(200, 'Product fetched successfully', $product);
     }
