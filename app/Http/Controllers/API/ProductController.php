@@ -16,7 +16,7 @@ class ProductController extends Controller
         $search = $request->query('search');
 
         $search = $request->query('search');
-        $is_admin_param = $request->has('admin');
+        $is_admin_param = str_contains($request->path(), 'admin');
         $products = Product::select('id', 'name', 'detail', 'price', 'image', 'status', 'type','measure')
             ->when(!$is_admin_param, function ($query) {
                 return $query->where('status', 1);

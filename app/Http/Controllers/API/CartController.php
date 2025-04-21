@@ -50,6 +50,11 @@ class CartController extends Controller
 
         DB::beginTransaction();
         try {
+            $callOrderController = new OrderController();
+            $check = $callOrderController->checkOrderAlreadyPlaced('create');
+            if ($check instanceof \Illuminate\Http\JsonResponse && $check->getStatusCode() !== 200) {
+                return $check;
+            }
             $max_order_amount = \App\Models\Option::getValueByKey('max_order_amount');
             $cart = Cart::firstOrCreate(['user_id' => Auth::id()]);
             $original_cart_items = CartItem::where('cart_id', $cart->id)
@@ -115,16 +120,27 @@ class CartController extends Controller
 
     public function removeFromCart($id)
     {
-        $cart_item = CartItem::findOrFail($id);
-        $cart_item->delete();
-        $cart = Cart::with('items.product')->where('user_id', Auth::id())->first();
-        $payable_amount = $cart ? round($cart->items->sum('total'), 2) : 0;
+        try {
+            $cart_item = CartItem::findOrFail($id);
+            $cart_item->delete();
+            $cart = Cart::with('items.product')->where('user_id', Auth::id())->first();
+            $payable_amount = $cart ? round($cart->items->sum('total'), 2) : 0;
 
-        return success_res(200, 'Item removed from cart', [
-            'cart_data' => $cart,
-            'payable_amount' => $payable_amount
-        ]);
+            return success_res(200, 'Item removed from cart', [
+                'cart_data' => $cart,
+                'payable_amount' => $payable_amount
+            ]);
+        } catch (\Exception $e) {
+            $cart = Cart::with('items.product')->where('user_id', Auth::id())->first();
+            $payable_amount = $cart ? round($cart->items->sum('total'), 2) : 0;
+
+            return error_res(403, 'Failed to remove item from cart', [
+                'cart_data' => $cart,
+                'payable_amount' => $payable_amount
+            ]);
+        }
     }
+
 
     public function clearCart()
     {

@@ -16,39 +16,94 @@ class OrderController extends Controller
 
     public function index()
     {
-        $orders = Order::where('user_id', Auth::id())
-            ->with(['items' => function($query){
-                $query->select(
-                        "id","order_id","product_id","quantity","unit_price","price","created_at",
-                )->with(['product' => function($query){
-                    $query->select(
-                        "id","name","detail","price","type","brand","measure","image","status",
-                    );
-                }]);
-            }])
-            ->orderBy('id','desc')
-            ->paginate(20);
+        try {
+            $userId = Auth::id();
+            $orders = Order::where('user_id', $userId)
+                ->with(['items:id,order_id,product_id,quantity,unit_price,price,created_at', 'items.product:id,name,detail,price,type,brand,measure,image,status'])
+                ->orderByDesc('id')
+                ->paginate(20);
+            return success_res(200, 'User Order Details', $orders);
+        } catch (\Throwable $e) {
+            return error_res(403, 'Something went wrong', $e->getMessage());
+        }
+    }
+        /**
+     * This function is used to edit Order
+     * of present month ,if the order found ,
+     * as per last_order_date in Options
+     */
 
-        return success_res(200, 'User Order Details', $orders);
+    public function editLastOrder()
+    {
+        try {
+            $order = $this->checkOrderAlreadyPlaced('edit');
+            if ($order instanceof \Illuminate\Http\JsonResponse) {
+                return $order;
+            }
+            if (!$order) {
+                return error_res(403, 'No previous order found to edit.');
+            }
+            $cart = Cart::where('user_id', Auth::id())->latest()->first();
+            if ($cart) {
+                $cart->items()->onlyTrashed()->restore();
+                $order->items()->delete();
+                $order->delete();
+                return success_res(200, 'Order is editable', $order);
+            } else {
+                return error_res(403, 'No Cart Items found', []);
+            }
+        } catch (\Exception $e) {
+            return error_res(403, 'Failed to edit the order. Please try again.', [
+                'error' => $e->getMessage(),
+            ]);
+        }
     }
 
-    public function allOrders()
+    /**
+     * This function is used to to display all
+     * orders to admin and also added filter
+     */
+    public function allOrders(Request $request)
     {
-        $orders = Order::select("id","user_id","order_number","status","discount","grand_total","created_at")
-                                    ->with('user:id,emp_id')
-                                    ->with(['items' => function($query){
-                                     $query->select("id","order_id","product_id","quantity","unit_price","price","created_at",)
-                                     ->with(['product' => function($query){
-                                     $query->select("id","name","detail","price","type","brand","measure","image","status",);
+        $query = Order::select(
+            "id","user_id","order_number","status","discount","grand_total","created_at"
+        )
+            ->with('user:id,emp_id')
+            ->with(['items' => function ($query) {
+                $query->select(
+                    "id","order_id","product_id","quantity","unit_price","price","created_at"
+                )->with(['product' => function ($query) {
+                    $query->select(
+                        "id","name","detail","price","type","brand","measure","image","status"
+                    );
+                }]);
+            }]);
+        if ($request->has('emp_id') && !empty($request->emp_id)) {
+            $empIds = is_array($request->emp_id) ? $request->emp_id : [$request->emp_id];
+            $query->whereHas('user', function ($q) use ($empIds) {
+                $q->whereIn('emp_id', $empIds);
+            });
+        }
+        if ($request->filled('start_date')) {
+            $query->where('created_at', '>=', $request->start_date);
+        }
+        if ($request->filled('end_date')) {
+            $query->where('created_at', '<=', $request->end_date . ' 23:59:59');
+        }
+        $query->orderBy('id', 'desc');
+        $per_page = $request->per_page ?? 20;
+        $orders = $query->paginate($per_page);
 
-                            }]);
-                        }])->orderBy('id','desc')->paginate(20);
-        return success_res(200, 'All Order Details', $orders);
+        if ($orders->isEmpty()) {
+            return success_res(200, 'No record found', $orders);
+        }
+
+        return success_res(200, 'Filtered Order Details', $orders);
     }
 
     public function allUsers()
     {
-        $users = User::select("id","name","email","emp_id","d_o_j","location","status")->paginate(20);
+        $users = User::select("id", "name", "email", "emp_id", "d_o_j", "location", "status")->paginate(20);
         return success_res(200, 'All Users Details', $users);
     }
 
@@ -60,19 +115,51 @@ class OrderController extends Controller
         return success_res(200, 'Order Details', $order);
     }
 
+    /**
+     * This function is used to
+     * tell that order is already been placed or not
+     * of the current month
+     */
+    public function checkOrderAlreadyPlaced($purpose = 'edit')
+    {
+        $current_date = now();
+        $last_order_date = \App\Models\Option::getValueByKey('last_order_date');
+        if (!$last_order_date || $current_date->gt(\Carbon\Carbon::parse($last_order_date))) {
+            return error_res(403, 'Order editing is not allowed at this time, as last date was ' . $last_order_date);
+        }
+
+        $order = Order::where('user_id', Auth::id())
+            ->whereYear('created_at', $current_date->year)
+            ->whereMonth('created_at', $current_date->month)
+            ->with('items.product')
+            ->latest()
+            ->first();
+
+        if ($order) {
+            if ($purpose === 'create') {
+                return error_res(403, 'Order has already been placed for this month.');
+            }
+            return $order;
+        } else {
+            if ($purpose === 'edit') {
+                return error_res(403, 'Order of current month not found.');
+            }
+            return error_res(200, 'You can place Order.');
+        }
+    }
     public function showOrderToAdmin($id)
     {
-        $order = Order::select("id","user_id","order_number","status","discount","grand_total","created_at","deleted_at")
-                ->with('user:id,emp_id')
-                ->with(['items' => function($query){
-            $query->select(
-                    "id","order_id","product_id","quantity","unit_price","price","created_at",
-            )->with(['product' => function($query){
+        $order = Order::select("id", "user_id", "order_number", "status", "discount", "grand_total", "created_at", "deleted_at")
+            ->with('user:id,emp_id')
+            ->with(['items' => function ($query) {
                 $query->select(
-                    "id","name","detail","price","type","brand","measure","image","status",
-                );
-            }]);
-        }])
+                    "id","order_id","product_id","quantity","unit_price","price","created_at",
+                )->with(['product' => function ($query) {
+                    $query->select(
+                        "id","name","detail","price","type","brand","measure","image","status",
+                    );
+                }]);
+            }])
             ->findOrFail($id);
 
         return success_res(200, 'Order Details', $order);
@@ -82,6 +169,10 @@ class OrderController extends Controller
     {
         DB::beginTransaction();
         try {
+            $check = $this->checkOrderAlreadyPlaced('create');
+            if ($check instanceof \Illuminate\Http\JsonResponse && $check->getStatusCode() !== 200) {
+                return $check;
+            }
             $cart = Cart::with('items.product')->where('user_id', Auth::id())->first();
 
             if (!$cart || $cart->items->isEmpty()) {
@@ -93,7 +184,7 @@ class OrderController extends Controller
             if ($max_order_amount && $grand_total > $max_order_amount) {
                 return error_res(403, "Your total order amount {$grand_total} exceeds the maximum allowed order amount of {$max_order_amount}");
             }
-            $discount = ($grand_total >= 20000)? round(10000, 3): round($grand_total / 2, 3);
+            $discount = ($grand_total >= 20000) ? round(10000, 3) : round($grand_total / 2, 3);
             $discount = min(round($discount, 3), round($grand_total, 3));
             $final_total = round($grand_total - $discount, 2);
 
@@ -101,6 +192,7 @@ class OrderController extends Controller
                 'user_id' => Auth::id(),
                 'order_number' => 'ORD-' . strtoupper(uniqid()),
                 'status' => 'pending',
+                'is_editable' => true,
                 'grand_total' => $grand_total,
                 'discount' => $discount,
                 'final_total' => $final_total
@@ -108,7 +200,7 @@ class OrderController extends Controller
 
             foreach ($cart->items as $cartItem) {
                 if ($max_order_amount && $cartItem->total > $max_order_amount) {
-                    return success_res(403,"The total amount for product {$cartItem->product->name} exceeds the maximum allowed order amount of {$max_order_amount}");
+                    return success_res(403, "The total amount for product {$cartItem->product->name} exceeds the maximum allowed order amount of {$max_order_amount}");
                 }
                 OrderItem::create([
                     'order_id' => $order->id,
