@@ -27,7 +27,7 @@ class OrderController extends Controller
             return error_res(403, 'Something went wrong', $e->getMessage());
         }
     }
-        /**
+     /**
      * This function is used to edit Order
      * of present month ,if the order found ,
      * as per last_order_date in Options
@@ -45,7 +45,8 @@ class OrderController extends Controller
             }
             $cart = Cart::where('user_id', Auth::id())->latest()->first();
             if ($cart) {
-                $cart->items()->onlyTrashed()->restore();
+                $order_item_product_ids = $order->items()->pluck('product_id')->toArray();
+                $cart->items()->onlyTrashed()->whereIn('product_id', $order_item_product_ids)->restore();
                 $order->items()->delete();
                 $order->delete();
                 return success_res(200, 'Order is editable', $order);
