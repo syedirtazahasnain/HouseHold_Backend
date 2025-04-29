@@ -47,6 +47,7 @@ class CartController extends Controller
             'products.*.product_id' => 'required|exists:products,id',
             'products.*.quantity' => 'required|integer|min:1'
         ]);
+        $employee_contribution = $company_discount = 0;
 
         DB::beginTransaction();
         try {
@@ -56,24 +57,25 @@ class CartController extends Controller
                 return $check;
             }
             $max_order_amount = \App\Models\Option::getValueByKey('max_order_amount');
-            $cart = Cart::firstOrCreate(['user_id' => Auth::id()]);
+            $cart = Cart::where('user_id', Auth::id())->latest()->first() ?? Cart::create(['user_id' => Auth::id()]);
             $original_cart_items = CartItem::where('cart_id', $cart->id)
-                ->select('id', 'cart_id', 'product_id', 'quantity', 'unit_price', 'total')
-                ->with('product:id,image,measure')
-                ->get();
+            ->select('id', 'cart_id', 'product_id', 'quantity', 'unit_price', 'total')
+            ->with('product:id,image,measure')
+            ->get();
             $original_payable = round($original_cart_items->sum('total'), 2);
-
             if ($max_order_amount && $original_payable > $max_order_amount) {
                 DB::rollBack();
                 return error_res(403, "Your current cart amount exceeds the maximum allowed order amount of {$max_order_amount}", [
                     'cart_data' => $original_cart_items,
-                    'payable_amount' => $original_payable
+                    'payable_amount' => $original_payable,
+                    'employee_contribution' => $employee_contribution,
+                    'company_discount' => $company_discount,
                 ]);
             }
 
-            foreach ($request->products as $productData) {
-                $product = Product::find($productData['product_id']);
-                $quantity = $productData['quantity'];
+            foreach ($request->products as $product_data) {
+                $product = Product::find($product_data['product_id']);
+                $quantity = $product_data['quantity'];
 
                 $cart_item_model = CartItem::updateOrCreate(
                     ['cart_id' => $cart->id, 'product_id' => $product->id],
@@ -102,13 +104,17 @@ class CartController extends Controller
                 $current_items = CartItem::where('cart_id', $cart->id)->get();
                 return error_res(403, "Total exceeds maximum order amount", [
                     'cart_data' => $current_items,
-                    'payable_amount' => round($current_items->sum('total'), 2)
+                    'payable_amount' => round($current_items->sum('total'), 2),
+                    'employee_contribution' => $employee_contribution,
+                    'company_discount' => $company_discount
                 ]);
             }
             DB::commit();
             return success_res(200, 'Products added to cart', [
                 'cart_data' => $final_items,
-                'payable_amount' => $final_amount
+                'payable_amount' => $final_amount,
+                'employee_contribution' => $employee_contribution,
+                'company_discount' => $company_discount,
             ]);
         } catch (\Exception $e) {
             DB::rollBack();

@@ -124,9 +124,21 @@ class OrderController extends Controller
     public function checkOrderAlreadyPlaced($purpose = 'edit')
     {
         $current_date = now();
+        $employee_contribution = $company_discount = 0;
         $last_order_date = \App\Models\Option::getValueByKey('last_order_date');
+        $cart = Cart::where('user_id', Auth::id())->latest()->first() ?? Cart::create(['user_id' => Auth::id()]);
+            $original_cart_items = \App\Models\CartItem::where('cart_id', $cart->id)
+            ->select('id', 'cart_id', 'product_id', 'quantity', 'unit_price', 'total')
+            ->with('product:id,image,measure')
+            ->get();
+            $original_payable = round($original_cart_items->sum('total'), 2);
         if (!$last_order_date || $current_date->gt(\Carbon\Carbon::parse($last_order_date))) {
-            return error_res(403, 'Order editing is not allowed at this time, as last date was ' . $last_order_date);
+            return error_res(403, 'Order editing is not allowed at this time, as last date was ' . $last_order_date,[
+                'cart_data' => $original_cart_items,
+                'payable_amount' => $original_payable,
+                'employee_contribution' => $employee_contribution,
+                'company_discount' => $company_discount
+            ]);
         }
 
         $order = Order::where('user_id', Auth::id())
