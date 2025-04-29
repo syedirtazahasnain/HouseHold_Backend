@@ -35,6 +35,7 @@ class CartController extends Controller
                 }]);
             }])
             ->where('user_id', Auth::id())
+            ->latest()
             ->first();
         $payable_amount = $cart ? round($cart->items->sum('total'), 2) : 0;
         $get_cart_summary = calculateAmountSummary($payable_amount);

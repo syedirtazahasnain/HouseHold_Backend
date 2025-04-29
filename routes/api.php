@@ -41,6 +41,7 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/orders/{id}', [OrderController::class, 'showOrderToAdmin']);
         Route::post('/store-products', [ProductController::class, 'store']);
         Route::get('/products', [ProductController::class, 'index']);
+        Route::post('/order-date', [GeneralController::class, 'orderDateUpdate']);
         Route::get('/products/{id}', [ProductController::class, 'show']);
         Route::post('/employees/import', [SummaryController::class, 'importEmployees'])->name('employees.import');
         Route::post('/product/import', [SummaryController::class, 'importProduct'])->name('product.import');
