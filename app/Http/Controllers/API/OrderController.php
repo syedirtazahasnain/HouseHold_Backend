@@ -65,42 +65,66 @@ class OrderController extends Controller
      * orders to admin and also added filter
      */
     public function allOrders(Request $request)
-    {
-        $query = Order::select(
-            "id","user_id","order_number","status","discount","grand_total","created_at"
-        )
-            ->with('user:id,emp_id')
+{
+    try {
+        $query = Order::query()
+            ->select([
+                "id", "user_id", "order_number", "status",
+                "discount", "grand_total", "created_at"
+            ])
+            ->with(['user' => function ($query) {
+                $query->select("id", "emp_id", "name");
+            }])
             ->with(['items' => function ($query) {
-                $query->select(
-                    "id","order_id","product_id","quantity","unit_price","price","created_at"
-                )->with(['product' => function ($query) {
-                    $query->select(
+                $query->select([
+                    "id", "order_id", "product_id", "quantity",
+                    "unit_price", "price", "created_at"])
+                ->with(['product' => function ($query) {
+                    $query->select([
                         "id","name","detail","price","type","brand","measure","image","status"
-                    );
+                    ]);
                 }]);
             }]);
-        if ($request->has('emp_id') && !empty($request->emp_id)) {
-            $empIds = is_array($request->emp_id) ? $request->emp_id : [$request->emp_id];
-            $query->whereHas('user', function ($q) use ($empIds) {
-                $q->whereIn('emp_id', $empIds);
-            });
+        if ($request->filled('emp_id')) {
+            $empIds = is_array($request->emp_id)
+                ? $request->emp_id
+                : array_filter(explode(',', $request->emp_id));
+            if (!empty($empIds)) {
+                $query->whereHas('user', function ($q) use ($empIds) {
+                    $q->whereIn('emp_id', $empIds);
+                });
+            }
+        }
+        if ($request->filled('order_number')) {
+            $orderNumber = $request->order_number;
+            $query->where('order_number', 'like', "%{$orderNumber}%");
         }
         if ($request->filled('start_date')) {
-            $query->where('created_at', '>=', $request->start_date);
+            $query->whereDate('created_at', '>=', $request->start_date);
         }
         if ($request->filled('end_date')) {
-            $query->where('created_at', '<=', $request->end_date . ' 23:59:59');
+            $query->whereDate('created_at', '<=', $request->end_date);
         }
-        $query->orderBy('id', 'desc');
-        $per_page = $request->per_page ?? 20;
-        $orders = $query->paginate($per_page);
-
-        if ($orders->isEmpty()) {
-            return success_res(200, 'No record found', $orders);
+        if ($request->filled('status')) {
+            $query->where('status', $request->status);
         }
+        $query->latest('id');
+        $perPage = min($request->per_page ?? 20, 100); // Limit max per page to 100
+        $orders = $query->paginate($perPage);
+        return success_res(
+            status_code: 200,
+            message: $orders->isEmpty() ? 'No orders found' : 'Orders retrieved successfully',
+            data: $orders
+        );
 
-        return success_res(200, 'Filtered Order Details', $orders);
+    } catch (\Exception $e) {
+        return error_res(
+            status_code: 403,
+            message: 'Failed to fetch orders: ' . $e->getMessage(),
+            data: []
+        );
     }
+}
 
     public function allUsers()
     {
@@ -183,6 +207,10 @@ class OrderController extends Controller
         return success_res(200, 'Order Details', $order);
     }
 
+    /**
+     * This function is used to place
+     * the order for customer
+     */
     public function placeOrder()
     {
         DB::beginTransaction();
