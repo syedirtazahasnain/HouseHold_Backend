@@ -37,7 +37,16 @@ class CartController extends Controller
             ->where('user_id', Auth::id())
             ->first();
         $payable_amount = $cart ? round($cart->items->sum('total'), 2) : 0;
-        return success_res(200, 'Products added to cart', ['cart_data' => $cart, 'payable_amount' => round($payable_amount, 2)]);
+        $get_cart_summary = calculateAmountSummary($payable_amount);
+        $get_cart_summary = $get_cart_summary->getData(true);
+        $employee_contribution =  $get_cart_summary['data']['employee_contribution'];
+        $company_discount =  $get_cart_summary['data']['discount'];
+        return success_res(200, 'Products added to cart',
+        [   'cart_data' => $cart,
+            'payable_amount' => round($payable_amount, 2),
+            'employee_contribution' => $employee_contribution,
+            'company_discount' => $company_discount,
+        ]);
     }
 
     public function addToCart(Request $request)
@@ -63,8 +72,16 @@ class CartController extends Controller
             ->with('product:id,image,measure')
             ->get();
             $original_payable = round($original_cart_items->sum('total'), 2);
+            $get_cart_summary = calculateAmountSummary($original_payable);
+            $get_cart_summary = $get_cart_summary->getData(true);
+            $employee_contribution =  $get_cart_summary['data']['employee_contribution'];
+            $company_discount =  $get_cart_summary['data']['discount'];
             if ($max_order_amount && $original_payable > $max_order_amount) {
                 DB::rollBack();
+                $get_cart_summary = calculateAmountSummary($original_payable);
+                $get_cart_summary = $get_cart_summary->getData(true);
+                $employee_contribution =  $get_cart_summary['data']['employee_contribution'];
+                $company_discount =  $get_cart_summary['data']['discount'];
                 return error_res(403, "Your current cart amount exceeds the maximum allowed order amount of {$max_order_amount}", [
                     'cart_data' => $original_cart_items,
                     'payable_amount' => $original_payable,
@@ -89,19 +106,35 @@ class CartController extends Controller
                 if ($max_order_amount && $cart_item_model->total > $max_order_amount) {
                     DB::rollBack();
                     $current_items = CartItem::where('cart_id', $cart->id)->get();
+                    $get_total_payable = round($current_items->sum('total'), 2);
+                    $get_cart_summary = calculateAmountSummary($get_total_payable);
+                    $get_cart_summary = $get_cart_summary->getData(true);
+                    $employee_contribution =  $get_cart_summary['data']['employee_contribution'];
+                    $company_discount =  $get_cart_summary['data']['discount'];
                     return error_res(403, "Product {$product->name} exceeds maximum order amount", [
                         'cart_data' => $current_items,
-                        'payable_amount' => round($current_items->sum('total'), 2)
+                        'payable_amount' => round($current_items->sum('total'), 2),
+                        'employee_contribution' => $employee_contribution,
+                        'company_discount' => $company_discount,
                     ]);
                 }
             }
 
             $final_items = CartItem::where('cart_id', $cart->id)->get();
             $final_amount = round($final_items->sum('total'), 2);
+            $get_cart_summary = calculateAmountSummary($final_amount);
+            $get_cart_summary = $get_cart_summary->getData(true);
+            $employee_contribution =  $get_cart_summary['data']['employee_contribution'];
+            $company_discount =  $get_cart_summary['data']['discount'];
 
             if ($max_order_amount && $final_amount > $max_order_amount) {
                 DB::rollBack();
                 $current_items = CartItem::where('cart_id', $cart->id)->get();
+                $get_total = round($current_items->sum('total'), 2);
+                $get_cart_summary = calculateAmountSummary($get_total);
+                $get_cart_summary = $get_cart_summary->getData(true);
+                $employee_contribution =  $get_cart_summary['data']['employee_contribution'];
+                $company_discount =  $get_cart_summary['data']['discount'];
                 return error_res(403, "Total exceeds maximum order amount", [
                     'cart_data' => $current_items,
                     'payable_amount' => round($current_items->sum('total'), 2),
@@ -129,20 +162,32 @@ class CartController extends Controller
         try {
             $cart_item = CartItem::findOrFail($id);
             $cart_item->delete();
-            $cart = Cart::with('items.product')->where('user_id', Auth::id())->first();
+            $cart = Cart::with('items.product')->where('user_id', Auth::id())->latest()->first();
+
             $payable_amount = $cart ? round($cart->items->sum('total'), 2) : 0;
+            $get_cart_summary = calculateAmountSummary($payable_amount);
+            $get_cart_summary = $get_cart_summary->getData(true);
+            $employee_contribution =  $get_cart_summary['data']['employee_contribution'];
+            $company_discount =  $get_cart_summary['data']['discount'];
 
             return success_res(200, 'Item removed from cart', [
                 'cart_data' => $cart,
-                'payable_amount' => $payable_amount
+                'payable_amount' => $payable_amount,
+                'employee_contribution' => $employee_contribution,
+                'company_discount' => $company_discount
             ]);
         } catch (\Exception $e) {
             $cart = Cart::with('items.product')->where('user_id', Auth::id())->first();
             $payable_amount = $cart ? round($cart->items->sum('total'), 2) : 0;
-
+            $get_cart_summary = calculateAmountSummary($payable_amount);
+            $get_cart_summary = $get_cart_summary->getData(true);
+            $employee_contribution =  $get_cart_summary['data']['employee_contribution'];
+            $company_discount =  $get_cart_summary['data']['discount'];
             return error_res(403, 'Failed to remove item from cart', [
                 'cart_data' => $cart,
-                'payable_amount' => $payable_amount
+                'payable_amount' => $payable_amount,
+                'employee_contribution' => $employee_contribution,
+                'company_discount' => $company_discount
             ]);
         }
     }

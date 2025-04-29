@@ -133,6 +133,10 @@ class OrderController extends Controller
             ->get();
             $original_payable = round($original_cart_items->sum('total'), 2);
         if (!$last_order_date || $current_date->gt(\Carbon\Carbon::parse($last_order_date))) {
+            $get_cart_summary = calculateAmountSummary($original_payable);
+            $get_cart_summary = $get_cart_summary->getData(true);
+            $employee_contribution =  $get_cart_summary['data']['employee_contribution'];
+            $company_discount =  $get_cart_summary['data']['discount'];
             return error_res(403, 'Order editing is not allowed at this time, as last date was ' . $last_order_date,[
                 'cart_data' => $original_cart_items,
                 'payable_amount' => $original_payable,
@@ -160,6 +164,7 @@ class OrderController extends Controller
             return error_res(200, 'You can place Order.');
         }
     }
+
     public function showOrderToAdmin($id)
     {
         $order = Order::select("id", "user_id", "order_number", "status", "discount", "grand_total", "created_at", "deleted_at")
@@ -191,7 +196,6 @@ class OrderController extends Controller
             if (!$cart || $cart->items->isEmpty()) {
                 return error_res(403, 'Cart is empty');
             }
-
             $max_order_amount = (float) \App\Models\Option::getValueByKey('max_order_amount');
             $grand_total = round($cart->items->sum('total'), 2);
             if ($max_order_amount && $grand_total > $max_order_amount) {

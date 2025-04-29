@@ -55,3 +55,18 @@ function calculateCartSummary($cart, $original_cart_items= null) {
 }
 
 
+/**
+ * The function returns true , grand_total and discount in
+ * same array indexes
+ */
+function calculateAmountSummary($grand_total) {
+    $discount = ($grand_total >= 20000) ? round(10000, 3) : round($grand_total / 2, 3);
+    $discount = min(round($discount, 3), round($grand_total, 3));
+    return success_res(200,'Summary Data' ,[
+        'grand_total' => $grand_total,
+        'discount' => $discount,
+        'employee_contribution' => $grand_total - $discount
+    ]);
+}
+
+
