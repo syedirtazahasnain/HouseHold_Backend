@@ -7,7 +7,7 @@ use App\Http\Controllers\API\CartController;
 use App\Http\Controllers\API\GeneralController;
 use App\Http\Controllers\API\OrderController;
 use App\Http\Controllers\API\ProductController;
-
+use App\Http\Controllers\API\SummaryController;
 
 Route::post('register', [AuthController::class, 'register']);
 Route::post('login', [AuthController::class, 'login']);
@@ -28,6 +28,7 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/orders', [OrderController::class, 'index']);
         Route::get('/orders/{id}', [OrderController::class, 'show']);
         Route::post('/orders/place', [OrderController::class, 'placeOrder']);
+        Route::post('/orders/edit-last-order', [OrderController::class, 'editLastOrder']);
         Route::post('/orders/cancel/{id}', [OrderController::class, 'cancelOrder']);
         Route::get('/products', [ProductController::class, 'index']);
     });
@@ -35,10 +36,15 @@ Route::middleware('auth:sanctum')->group(function () {
     // 🛠 Admin Routes (Only admins & super admins)
     Route::prefix('admin')->middleware('role_admin')->group(function () {
         Route::get('/orders/all', [OrderController::class, 'allOrders']);
+        Route::get('/users/all', [OrderController::class, 'allUsers']);
+        Route::post('/users-update/{id}', [GeneralController::class, 'usersUpdate']);
         Route::get('/orders/{id}', [OrderController::class, 'showOrderToAdmin']);
         Route::post('/store-products', [ProductController::class, 'store']);
         Route::get('/products', [ProductController::class, 'index']);
+        Route::post('/order-date', [GeneralController::class, 'orderDateUpdate']);
         Route::get('/products/{id}', [ProductController::class, 'show']);
+        Route::post('/employees/import', [SummaryController::class, 'importEmployees'])->name('employees.import');
+        Route::post('/product/import', [SummaryController::class, 'importProduct'])->name('product.import');
         Route::get('/dashboard', function () {
             return response()->json(['message' => 'Admin Dashboard']);
         });
