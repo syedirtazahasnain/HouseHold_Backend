@@ -4,6 +4,7 @@ namespace App\Models;
 
 // use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Carbon\Carbon;
+use App\Models\Order;
 use Laravel\Sanctum\HasApiTokens;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Notifications\Notifiable;
@@ -21,16 +22,7 @@ class User extends Authenticatable
      *
      * @var list<string>
      */
-    protected $fillable = [
-        'name',
-        'email',
-        'password',
-        'is_admin',
-        'd_o_j',
-        'location',
-        'emp_id',
-        'status',
-    ];
+    protected $fillable = ['name','email','password','is_admin','d_o_j','location','emp_id','status'];
     protected $appends = ['role'];
 
     /**
@@ -58,21 +50,26 @@ class User extends Authenticatable
     }
 
      // Get role name
-     public function getRoleAttribute()
-     {
-         return config('roles.roles')[$this->is_admin] ?? 'user';
-     }
+    public function getRoleAttribute()
+    {
+        return config('roles.roles')[$this->is_admin] ?? 'user';
+    }
 
-     public function hasRole($role)
-     {
-         return $this->role === $role;
-     }
+    public function hasRole($role)
+    {
+        return $this->role === $role;
+    }
 
-     // Assign abilities based on role
-     public function createAuthToken()
-     {
-         return $this->createToken('auth_token', [$this->role])->plainTextToken;
-     }
+    public function orders()
+    {
+        return $this->hasMany(Order::class);
+    }
+
+    // Assign abilities based on role
+    public function createAuthToken()
+    {
+        return $this->createToken('auth_token', [$this->role])->plainTextToken;
+    }
 
     public function getCreatedAtAttribute($value)
     {

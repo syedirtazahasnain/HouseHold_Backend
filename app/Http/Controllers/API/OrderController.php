@@ -27,7 +27,7 @@ class OrderController extends Controller
             return error_res(403, 'Something went wrong', $e->getMessage());
         }
     }
-     /**
+    /**
      * This function is used to edit Order
      * of present month ,if the order found ,
      * as per last_order_date in Options
@@ -65,71 +65,113 @@ class OrderController extends Controller
      * orders to admin and also added filter
      */
     public function allOrders(Request $request)
-{
-    try {
-        $query = Order::query()
-            ->select([
-                "id", "user_id", "order_number", "status",
-                "discount", "grand_total", "created_at"
-            ])
-            ->with(['user' => function ($query) {
-                $query->select("id", "emp_id", "name");
-            }])
-            ->with(['items' => function ($query) {
-                $query->select([
-                    "id", "order_id", "product_id", "quantity",
-                    "unit_price", "price", "created_at"])
-                ->with(['product' => function ($query) {
+    {
+        try {
+            $query = Order::query()
+                ->select([
+                    "id",
+                    "user_id",
+                    "order_number",
+                    "status",
+                    "discount",
+                    "grand_total",
+                    "created_at"
+                ])
+                ->with(['user' => function ($query) {
+                    $query->select("id", "emp_id", "name");
+                }])
+                ->with(['items' => function ($query) {
                     $query->select([
-                        "id","name","detail","price","type","brand","measure","image","status"
-                    ]);
+                        "id",
+                        "order_id",
+                        "product_id",
+                        "quantity",
+                        "unit_price",
+                        "price",
+                        "created_at"
+                    ])
+                        ->with(['product' => function ($query) {
+                            $query->select([
+                                "id",
+                                "name",
+                                "detail",
+                                "price",
+                                "type",
+                                "brand",
+                                "measure",
+                                "image",
+                                "status"
+                            ]);
+                        }]);
                 }]);
-            }]);
-        if ($request->filled('emp_id')) {
-            $empIds = is_array($request->emp_id)
-                ? $request->emp_id
-                : array_filter(explode(',', $request->emp_id));
-            if (!empty($empIds)) {
-                $query->whereHas('user', function ($q) use ($empIds) {
-                    $q->whereIn('emp_id', $empIds);
+            if ($request->filled('emp_id')) {
+                $empIds = is_array($request->emp_id)
+                    ? $request->emp_id
+                    : array_filter(explode(',', $request->emp_id));
+                if (!empty($empIds)) {
+                    $query->whereHas('user', function ($q) use ($empIds) {
+                        $q->whereIn('emp_id', $empIds);
+                    });
+                }
+            }
+            if ($request->filled('order_number')) {
+                $orderNumber = $request->order_number;
+                $query->where('order_number', 'like', "%{$orderNumber}%");
+            }
+            if ($request->filled('start_date')) {
+                $query->whereDate('created_at', '>=', $request->start_date);
+            }
+            if ($request->filled('end_date')) {
+                $query->whereDate('created_at', '<=', $request->end_date);
+            }
+            if ($request->filled('status')) {
+                $query->where('status', $request->status);
+            }
+            $query->latest('id');
+            $perPage = min($request->per_page ?? 20, 100); // Limit max per page to 100
+            $orders = $query->paginate($perPage);
+            return success_res(
+                status_code: 200,
+                message: $orders->isEmpty() ? 'No orders found' : 'Orders retrieved successfully',
+                data: $orders
+            );
+        } catch (\Exception $e) {
+            return error_res(
+                status_code: 403,
+                message: 'Failed to fetch orders: ' . $e->getMessage(),
+                data: []
+            );
+        }
+    }
+
+    public function allUsers(Request $request)
+    {
+        try {
+            $query = User::select("id", "name", "email", "emp_id", "d_o_j", "location", "status");
+
+            $has_empid_filter = $request->has('emp_id') && !empty($request->input('emp_id'));
+            $has_name_filter = $request->has('name') && !empty($request->input('name'));
+
+            if ($has_empid_filter || $has_name_filter) {
+                $query->where(function($q) use ($request, $has_empid_filter, $has_name_filter) {
+                    if ($has_empid_filter) {
+                        $emp_ids = $request->input('emp_id');
+                        $q->whereIn('emp_id', $emp_ids);
+                    }
+                    if ($has_name_filter) {
+                        $names = $request->input('name');
+                        foreach ($names as $name) {
+                            $q->orWhere('name', 'like', '%' . $name . '%');
+                        }
+                    }
                 });
             }
-        }
-        if ($request->filled('order_number')) {
-            $orderNumber = $request->order_number;
-            $query->where('order_number', 'like', "%{$orderNumber}%");
-        }
-        if ($request->filled('start_date')) {
-            $query->whereDate('created_at', '>=', $request->start_date);
-        }
-        if ($request->filled('end_date')) {
-            $query->whereDate('created_at', '<=', $request->end_date);
-        }
-        if ($request->filled('status')) {
-            $query->where('status', $request->status);
-        }
-        $query->latest('id');
-        $perPage = min($request->per_page ?? 20, 100); // Limit max per page to 100
-        $orders = $query->paginate($perPage);
-        return success_res(
-            status_code: 200,
-            message: $orders->isEmpty() ? 'No orders found' : 'Orders retrieved successfully',
-            data: $orders
-        );
 
-    } catch (\Exception $e) {
-        return error_res(
-            status_code: 403,
-            message: 'Failed to fetch orders: ' . $e->getMessage(),
-            data: []
-        );
-    }
-}
-
-    public function allUsers()
-    {
-        $users = User::select("id", "name", "email", "emp_id", "d_o_j", "location", "status")->paginate(20);
-        return success_res(200, 'All Users Details', $users);
+            $users = $query->paginate(20);
+            return success_res(200, 'All Users Details', $users);
+        } catch (\Exception $e) {
+            return error_res(403, 'Something went wrong', $e->getMessage());
+        }
     }
 
     public function show($id)
@@ -151,17 +193,17 @@ class OrderController extends Controller
         $employee_contribution = $company_discount = 0;
         $last_order_date = \App\Models\Option::getValueByKey('last_order_date');
         $cart = Cart::where('user_id', Auth::id())->latest()->first() ?? Cart::create(['user_id' => Auth::id()]);
-            $original_cart_items = \App\Models\CartItem::where('cart_id', $cart->id)
+        $original_cart_items = \App\Models\CartItem::where('cart_id', $cart->id)
             ->select('id', 'cart_id', 'product_id', 'quantity', 'unit_price', 'total')
             ->with('product:id,image,measure')
             ->get();
-            $original_payable = round($original_cart_items->sum('total'), 2);
+        $original_payable = round($original_cart_items->sum('total'), 2);
         if (!$last_order_date || $current_date->gt(\Carbon\Carbon::parse($last_order_date))) {
             $get_cart_summary = calculateAmountSummary($original_payable);
             $get_cart_summary = $get_cart_summary->getData(true);
             $employee_contribution =  $get_cart_summary['data']['employee_contribution'];
             $company_discount =  $get_cart_summary['data']['discount'];
-            return error_res(403, 'Order editing is not allowed at this time, as last date was ' . $last_order_date,[
+            return error_res(403, 'Order editing is not allowed at this time, as last date was ' . $last_order_date, [
                 'cart_data' => $original_cart_items,
                 'payable_amount' => $original_payable,
                 'employee_contribution' => $employee_contribution,
@@ -195,10 +237,24 @@ class OrderController extends Controller
             ->with('user:id,emp_id')
             ->with(['items' => function ($query) {
                 $query->select(
-                    "id","order_id","product_id","quantity","unit_price","price","created_at",
+                    "id",
+                    "order_id",
+                    "product_id",
+                    "quantity",
+                    "unit_price",
+                    "price",
+                    "created_at",
                 )->with(['product' => function ($query) {
                     $query->select(
-                        "id","name","detail","price","type","brand","measure","image","status",
+                        "id",
+                        "name",
+                        "detail",
+                        "price",
+                        "type",
+                        "brand",
+                        "measure",
+                        "image",
+                        "status",
                     );
                 }]);
             }])
