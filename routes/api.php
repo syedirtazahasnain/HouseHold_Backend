@@ -19,6 +19,7 @@ Route::middleware('auth:sanctum')->group(function () {
 
     // 🛒 User Routes (Only authenticated users can access)
     Route::get('/user-details', [GeneralController::class, 'userDetails']);
+    Route::get('/dashboard-summary', [GeneralController::class, 'summary']);
     Route::post('/password-update', [GeneralController::class, 'passwordUpdate']);
     Route::middleware('role_user:user')->group(function () {
         Route::get('/cart', [CartController::class, 'index']);
@@ -37,7 +38,7 @@ Route::middleware('auth:sanctum')->group(function () {
     // 🛠 Admin Routes (Only admins & super admins)
     Route::prefix('admin')->middleware('role_admin')->group(function () {
         Route::get('/orders/all', [OrderController::class, 'allOrders']);
-        Route::get('/users/all', [OrderController::class, 'allUsers']);
+        Route::any('/users/all', [OrderController::class, 'allUsers']);
         Route::post('/users-update/{id}', [GeneralController::class, 'usersUpdate']);
         Route::get('/orders/{id}', [OrderController::class, 'showOrderToAdmin']);
         Route::post('/store-products', [ProductController::class, 'store']);
