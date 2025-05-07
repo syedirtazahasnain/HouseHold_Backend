@@ -22,7 +22,7 @@ return new class extends Migration
     public function down(): void
     {
         Schema::table('orders', function (Blueprint $table) {
-            Schema::dropColumns('is_editable');
+            $table->dropColumn('is_editable');
         });
     }
 };
