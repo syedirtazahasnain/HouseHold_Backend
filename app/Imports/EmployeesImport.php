@@ -33,7 +33,7 @@ class EmployeesImport implements ToModel, WithHeadingRow, WithChunkReading, Shou
             [
                 'name'       => $row['Name'] ?? $row['name'] ?? 'Unknown',
                 'email'      => $row['Email'] ?? $row['email'] ?? null,
-                'password'   => bcrypt('test@123'),
+                'password'   => bcrypt('nordic@123'),
                 'd_o_j'      => $row['date_of_joining'] ?? $row['Date Of Joining'] ?? $row['date of joining'] ?? null,
                 'status'     => $row['status'] ?? 'Probation',
                 'location'   => $row['office_location'] ?? $row['location'] ?? null,
