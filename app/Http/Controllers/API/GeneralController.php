@@ -155,7 +155,7 @@ class GeneralController extends Controller
                     ->exists();
                 $current_month_status = $has_current_month_order ? 'Ration' : 'Cash';
                 $last_two_months = collect();
-                for ($i = 1; $i <= 2; $i++) {
+                for ($i = 0; $i < 2; $i++) {
                     $month = Carbon::now()->subMonths($i);
                     $month_start = $month->copy()->startOfMonth();
                     $month_end = $month->copy()->endOfMonth();
@@ -164,16 +164,17 @@ class GeneralController extends Controller
                         ->latest('created_at')
                         ->first();
                     $last_two_months->push([
-                        'sr_no' => $i,
+                        'sr_no' => $i + 1,
                         'month' => $month->format('F Y'),
                         'type' => $monthly_order ? 'Ration' : 'Cash',
-                        'amount' => $monthly_order ? $monthly_order->grand_total : 7000,
+                        'amount' => $monthly_order ? (int) $monthly_order->grand_total : 7000,
                     ]);
                 }
                 return success_res(200, 'User Summary', [
                     'total_ration_count' => $total_orders_placed,
-                    'total_cash_count' => $total_ration_count,
+                    'total_cash_count' => (int)round($total_ration_count),
                     'current_month_status' => $current_month_status,
+                    'total_months_count' => (int) round($eligible_months+3),
                     'last_two_months' => $last_two_months
                 ]);
             } else {
@@ -184,7 +185,7 @@ class GeneralController extends Controller
                     ->pluck('user_id')
                     ->unique();
                 $total_ration_employees = $users_with_orders->count();
-                $total_cash_employees = User::where('is_admin', 3)
+                $total_cash_employees = User::where(['is_admin' => 3, 'status' => 'Permanent'])
                     ->whereNotIn('id', $users_with_orders)
                     ->count();
                 $recent_orders = Order::with('user:id,name')
