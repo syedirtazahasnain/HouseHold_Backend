@@ -25,21 +25,23 @@ class DatabaseSeeder extends Seeder
         //     'email' => 'test@example.com',
         // ]);
 
-        // User::create([
-        //     'name' => 'Super Admin',
-        //     'email' => 'superadmin@test.com',
-        //     'is_admin' => 1,
-        //     'email_verified_at' => now(),
-        //     'password' => bcrypt('test@123'),
-        // ]);
+        User::create([
+            'name' => 'Super Admin',
+            'email' => 'superadmin@test.com',
+            'status' => 'PERMANENT',
+            'is_admin' => 1,
+            'email_verified_at' => now(),
+            'password' => bcrypt('test@123'),
+        ]);
 
-        // User::create([
-        //     'name' => 'Admin User',
-        //     'email' => 'admin@test.com',
-        //     'is_admin' => 2,
-        //     'email_verified_at' => now(),
-        //     'password' => bcrypt('test@123'),
-        // ]);
+        User::create([
+            'name' => 'Admin User',
+            'email' => 'admin@test.com',
+            'status' => 'PERMANENT',
+            'is_admin' => 2,
+            'email_verified_at' => now(),
+            'password' => bcrypt('test@123'),
+        ]);
 
         $this->call([
             OptionSeeder::class,
