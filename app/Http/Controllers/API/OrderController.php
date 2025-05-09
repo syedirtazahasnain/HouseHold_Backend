@@ -33,32 +33,33 @@ class OrderController extends Controller
      * as per last_order_date in Options
      */
 
-    public function editLastOrder()
-    {
-        try {
-            $order = $this->checkOrderAlreadyPlaced('edit');
-            if ($order instanceof \Illuminate\Http\JsonResponse) {
-                return $order;
-            }
-            if (!$order) {
-                return error_res(403, 'No previous order found to edit.');
-            }
-            $cart = Cart::where('user_id', Auth::id())->latest()->first();
-            if ($cart) {
-                $order_item_product_ids = $order->items()->pluck('product_id')->toArray();
-                $cart->items()->onlyTrashed()->whereIn('product_id', $order_item_product_ids)->restore();
-                $order->items()->delete();
-                $order->delete();
-                return success_res(200, 'Order is editable', $order);
-            } else {
-                return error_res(403, 'No Cart Items found', []);
-            }
-        } catch (\Exception $e) {
-            return error_res(403, 'Failed to edit the order. Please try again.', [
-                'error' => $e->getMessage(),
-            ]);
-        }
-    }
+     public function editLastOrder()
+     {
+         try {
+             $order = $this->checkOrderAlreadyPlaced('edit');
+             if ($order instanceof \Illuminate\Http\JsonResponse) {
+                 return $order;
+             }
+             if (!$order) {
+                 return error_res(403, 'No previous order found to edit.');
+             }
+             $order->update(['status' => 'pending']);
+             $cart = Cart::where('user_id', Auth::id())->latest()->first();
+             if ($cart) {
+                 $order_item_product_ids = $order->items()->pluck('product_id')->toArray();
+                 $cart->items()->onlyTrashed()->whereIn('product_id', $order_item_product_ids)->restore();
+                //  $order->items()->delete();
+                //  $order->delete();
+                 return success_res(200, 'Order is now editable. Don’t forget to resubmit to confirm changes.', $order);
+             } else {
+                 return error_res(403, 'No Cart Items found');
+             }
+         } catch (\Exception $e) {
+             return error_res(403, 'Failed to edit the order. Please try again.', [
+                 'error' => $e->getMessage(),
+             ]);
+         }
+     }
 
     /**
      * This function is used to to display all
@@ -214,6 +215,7 @@ class OrderController extends Controller
         $order = Order::where('user_id', Auth::id())
             ->whereYear('created_at', $current_date->year)
             ->whereMonth('created_at', $current_date->month)
+            ->where('status','completed')
             ->with('items.product')
             ->latest()
             ->first();
@@ -275,6 +277,15 @@ class OrderController extends Controller
             if ($check instanceof \Illuminate\Http\JsonResponse && $check->getStatusCode() !== 200) {
                 return $check;
             }
+              // Delete existing order and its items if any
+            $existing_order = Order::where('user_id', Auth::id())
+            ->where('status', 'pending')
+            ->latest()
+            ->first();
+            if ($existing_order) {
+                $existing_order->items()->delete();
+                $existing_order->delete();
+            }
             $cart = Cart::with('items.product')->where('user_id', Auth::id())->first();
 
             if (!$cart || $cart->items->isEmpty()) {
@@ -292,7 +303,7 @@ class OrderController extends Controller
             $order = Order::create([
                 'user_id' => Auth::id(),
                 'order_number' => 'ORD-' . strtoupper(uniqid()),
-                'status' => 'pending',
+                'status' => 'completed',
                 'is_editable' => true,
                 'grand_total' => $grand_total,
                 'discount' => $discount,
