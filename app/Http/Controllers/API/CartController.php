@@ -42,12 +42,15 @@ class CartController extends Controller
         $get_cart_summary = $get_cart_summary->getData(true);
         $employee_contribution =  $get_cart_summary['data']['employee_contribution'];
         $company_discount =  $get_cart_summary['data']['discount'];
-        return success_res(200, 'Products added to cart',
-        [   'cart_data' => $cart,
-            'payable_amount' => round($payable_amount, 2),
-            'employee_contribution' => $employee_contribution,
-            'company_discount' => $company_discount,
-        ]);
+        return success_res(
+            200,'Products added to cart',
+            [
+                'cart_data' => $cart,
+                'payable_amount' => round($payable_amount, 2),
+                'employee_contribution' => $employee_contribution,
+                'company_discount' => $company_discount,
+            ]
+        );
     }
 
     public function addToCart(Request $request)
@@ -69,10 +72,10 @@ class CartController extends Controller
             $max_order_amount = \App\Models\Option::getValueByKey('max_order_amount');
             $cart = Cart::where('user_id', Auth::id())->latest()->first() ?? Cart::create(['user_id' => Auth::id()]);
             $original_cart_items = CartItem::where('cart_id', $cart->id)
-            ->select('id', 'cart_id', 'product_id', 'quantity', 'unit_price', 'total')
-            ->with('product:id,image,measure')
-            ->orderBy('id','desc')
-            ->get();
+                ->select('id', 'cart_id', 'product_id', 'quantity', 'unit_price', 'total')
+                ->with('product:id,image,measure')
+                ->orderBy('id', 'desc')
+                ->get();
             $original_payable = round($original_cart_items->sum('total'), 2);
             $get_cart_summary = calculateAmountSummary($original_payable);
             $get_cart_summary = $get_cart_summary->getData(true);
@@ -107,7 +110,7 @@ class CartController extends Controller
 
                 if ($max_order_amount && $cart_item_model->total > $max_order_amount) {
                     DB::rollBack();
-                    $current_items = CartItem::where('cart_id', $cart->id)->orderBy('id','desc')->get();
+                    $current_items = CartItem::where('cart_id', $cart->id)->orderBy('id', 'desc')->get();
                     $get_total_payable = round($current_items->sum('total'), 2);
                     $get_cart_summary = calculateAmountSummary($get_total_payable);
                     $get_cart_summary = $get_cart_summary->getData(true);
@@ -122,7 +125,7 @@ class CartController extends Controller
                 }
             }
 
-            $final_items = CartItem::where('cart_id', $cart->id)->orderBy('id','desc')->get();
+            $final_items = CartItem::where('cart_id', $cart->id)->orderBy('id', 'desc')->get();
             $final_amount = round($final_items->sum('total'), 2);
             $get_cart_summary = calculateAmountSummary($final_amount);
             $get_cart_summary = $get_cart_summary->getData(true);
@@ -131,7 +134,7 @@ class CartController extends Controller
 
             if ($max_order_amount && $final_amount > $max_order_amount) {
                 DB::rollBack();
-                $current_items = CartItem::where('cart_id', $cart->id)->orderBy('id','desc')->get();
+                $current_items = CartItem::where('cart_id', $cart->id)->orderBy('id', 'desc')->get();
                 $get_total = round($current_items->sum('total'), 2);
                 $get_cart_summary = calculateAmountSummary($get_total);
                 $get_cart_summary = $get_cart_summary->getData(true);
@@ -199,8 +202,25 @@ class CartController extends Controller
     {
         $cart = Cart::where('user_id', Auth::id())->first();
         if ($cart) {
-            $cart->items()->delete();
-            $cart->delete();
+            $currentDate = now();
+            $order = \App\Models\Order::where('user_id', Auth::id())
+                ->whereYear('created_at', $currentDate->year)
+                ->whereMonth('created_at', $currentDate->month)
+                ->where('status', 'pending')
+                ->with('items.product')
+                ->latest()
+                ->first();
+            if ($order) {
+                $order->items()->delete();
+                $order->delete();
+                $cart->items()->delete();
+                $cart->delete();
+                return success_res(200, 'Order and Cart cleared Successfully', []);
+            } else {
+                $cart->items()->delete();
+                $cart->delete();
+                return success_res(200, 'Cart cleared Successfully', []);
+            }
         }
         return success_res(200, 'Cart cleared', []);
     }
