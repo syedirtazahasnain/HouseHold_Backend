@@ -28,6 +28,7 @@ class DatabaseSeeder extends Seeder
         User::create([
             'name' => 'Super Admin',
             'email' => 'superadmin@test.com',
+            'status' => 'PERMANENT',
             'is_admin' => 1,
             'email_verified_at' => now(),
             'password' => bcrypt('test@123'),
@@ -36,19 +37,24 @@ class DatabaseSeeder extends Seeder
         User::create([
             'name' => 'Admin User',
             'email' => 'admin@test.com',
+            'status' => 'PERMANENT',
             'is_admin' => 2,
             'email_verified_at' => now(),
             'password' => bcrypt('test@123'),
         ]);
 
-        User::factory(998)->create();
-        Product::factory(500)->create();
-        Cart::factory(200)->create();
+        $this->call([
+            OptionSeeder::class,
+        ]);
+
+        // User::factory(998)->create();
+        // Product::factory(500)->create();
+        // Cart::factory(200)->create();
         // Create 400 Cart Items (2 per cart)
-        CartItem::factory(400)->create();
+        // CartItem::factory(400)->create();
         // Create 300 Orders
-        Order::factory(300)->create();
+        // Order::factory(300)->create();
         // Create 500 Order Items
-        OrderItem::factory(500)->create();
+        // OrderItem::factory(500)->create();
     }
 }
