@@ -133,10 +133,8 @@ class GeneralController extends Controller
             $user = auth()->user();
             if ($user->role == 'user') {
                 $start_date = $user->d_o_j ? Carbon::parse($user->d_o_j) : Carbon::parse($user->created_at);
-                // dump('$user', $user, '$start_date', $start_date, 'created_at', $user->created_at);
                 $current_date = Carbon::now();
                 $total_months = $start_date->diffInMonths($current_date);
-                // dd('$total_months', $total_months);
                 $eligible_months = max($total_months - 3, 0);
                 if ($eligible_months < 1) {
                     return success_res(200, 'Your are on Probabtion', [
@@ -217,8 +215,8 @@ class GeneralController extends Controller
                     $month = Carbon::now()->subMonths($i);
                     $month_start = $month->copy()->startOfMonth();
                     $month_end = $month->copy()->endOfMonth();
-                    $highest_order = Order::whereBetween('created_at', [$month_start, $month_end])
-                        ->orderByDesc('grand_total')
+                    $highest_order = Order::whereBetween('updated_at', [$month_start, $month_end])
+                        ->orderByDesc(\DB::raw('grand_total + 0'))
                         ->first();
                     $month_wise_rations->push([
                         'month' => $month->format('F Y'),
