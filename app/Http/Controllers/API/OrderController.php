@@ -148,7 +148,7 @@ class OrderController extends Controller
     public function allUsers(Request $request)
     {
         try {
-            $query = User::select("id", "name", "email", "emp_id", "d_o_j", "location", "status");
+            $query = User::select("id", "name", "email", "emp_id", "d_o_j", "location", "status")->where('is_admin',3);
 
             $has_empid_filter = $request->has('emp_id') && !empty($request->input('emp_id'));
             $has_name_filter = $request->has('name') && !empty($request->input('name'));
