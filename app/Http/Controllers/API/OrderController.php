@@ -148,7 +148,7 @@ class OrderController extends Controller
     public function allUsers(Request $request)
     {
         try {
-            $query = User::select("id", "name", "email", "emp_id", "d_o_j", "location", "status");
+            $query = User::select("id", "name", "email", "emp_id", "d_o_j", "location", "status")->where('is_admin',3);
 
             $has_empid_filter = $request->has('emp_id') && !empty($request->input('emp_id'));
             $has_name_filter = $request->has('name') && !empty($request->input('name'));
@@ -215,21 +215,18 @@ class OrderController extends Controller
         $order = Order::where('user_id', Auth::id())
             ->whereYear('created_at', $current_date->year)
             ->whereMonth('created_at', $current_date->month)
-            ->where('status','completed')
+            // ->where('status','completed')
             ->with('items.product')
             ->latest()
             ->first();
 
         if ($order) {
-            if ($purpose === 'create') {
+            if ($purpose === 'create' && (($order->status == 'completed'))) {
                 return error_res(403, 'Order has already been placed for this month.');
             }
             return $order;
         } else {
-            if ($purpose === 'edit') {
-                return error_res(403, 'Order of current month not found.');
-            }
-            return error_res(200, 'You can place Order.');
+             return error_res(200, 'You can place Order.');
         }
     }
 
