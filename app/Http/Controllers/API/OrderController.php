@@ -215,21 +215,18 @@ class OrderController extends Controller
         $order = Order::where('user_id', Auth::id())
             ->whereYear('created_at', $current_date->year)
             ->whereMonth('created_at', $current_date->month)
-            ->where('status','completed')
+            // ->where('status','completed')
             ->with('items.product')
             ->latest()
             ->first();
 
         if ($order) {
-            if ($purpose === 'create') {
+            if ($purpose === 'create' && (($order->status == 'completed'))) {
                 return error_res(403, 'Order has already been placed for this month.');
             }
             return $order;
         } else {
-            if ($purpose === 'edit') {
-                return error_res(403, 'Order of current month not found.');
-            }
-            return error_res(200, 'You can place Order.');
+             return error_res(200, 'You can place Order.');
         }
     }
 
