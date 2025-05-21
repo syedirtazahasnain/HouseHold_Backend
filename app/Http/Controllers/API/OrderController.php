@@ -129,8 +129,8 @@ class OrderController extends Controller
                 $query->where('status', $request->status);
             }
             $query->latest('id');
-            $perPage = min($request->per_page ?? 20, 100); // Limit max per page to 100
-            $orders = $query->paginate($perPage);
+            $per_age = min($request->per_page ?? 20, 100);
+            $orders = $query->paginate($per_age);
             return success_res(
                 status_code: 200,
                 message: $orders->isEmpty() ? 'No orders found' : 'Orders retrieved successfully',
