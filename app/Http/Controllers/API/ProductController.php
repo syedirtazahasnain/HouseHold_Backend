@@ -2,9 +2,11 @@
 
 namespace App\Http\Controllers\API;
 
-use App\Http\Controllers\Controller;
+use Str;
 use App\Models\Product;
 use Illuminate\Http\Request;
+use App\Http\Controllers\Controller;
+use App\services\OrderUpdateService;
 
 class ProductController extends Controller
 {
@@ -17,7 +19,7 @@ class ProductController extends Controller
 
         $search = $request->query('search');
         $is_admin_param = str_contains($request->path(), 'admin');
-        $products = Product::select('id', 'name', 'detail', 'price', 'image', 'status', 'type','measure')
+        $products = Product::select('id', 'name', 'detail', 'price', 'image', 'status', 'type', 'measure')
             ->when(!$is_admin_param, function ($query) {
                 return $query->where('status', 1);
             })
@@ -71,6 +73,22 @@ class ProductController extends Controller
                 $identifier,
                 $validated_data
             );
+
+            if (isset($request->order_update) && $request->order_update == 1) {
+                $start_date = \Carbon\Carbon::now()->startOfMonth()->startOfDay();
+                $end_date = \Carbon\Carbon::now()->endOfMonth()->endOfDay();
+                $service = new OrderUpdateService();
+                try {
+                    $updated_orders = $service->bulkUpdateOrders($start_date, $end_date);
+                    return success_res(200, 'Orders for current month updated successfully', $product);
+                } catch (\Exception $e) {
+                    return error_res(403, 'Validation failed', [
+                        'message' => $e->getMessage(),
+                        'error_details' => $e->getTraceAsString()
+                    ]);
+                }
+            }
+
             $was_recently_created = $product->was_recently_created;
             return success_res(200, $was_recently_created ? 'Product created successfully' : 'Product updated successfully', $product);
         } catch (\Illuminate\Validation\ValidationException $e) {

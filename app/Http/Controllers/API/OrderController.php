@@ -33,33 +33,33 @@ class OrderController extends Controller
      * as per last_order_date in Options
      */
 
-     public function editLastOrder()
-     {
-         try {
-             $order = $this->checkOrderAlreadyPlaced('edit');
-             if ($order instanceof \Illuminate\Http\JsonResponse) {
-                 return $order;
-             }
-             if (!$order) {
-                 return error_res(403, 'No previous order found to edit.');
-             }
-             $order->update(['status' => 'pending']);
-             $cart = Cart::where('user_id', Auth::id())->latest()->first();
-             if ($cart) {
-                 $order_item_product_ids = $order->items()->pluck('product_id')->toArray();
-                 $cart->items()->onlyTrashed()->whereIn('product_id', $order_item_product_ids)->restore();
+    public function editLastOrder()
+    {
+        try {
+            $order = $this->checkOrderAlreadyPlaced('edit');
+            if ($order instanceof \Illuminate\Http\JsonResponse) {
+                return $order;
+            }
+            if (!$order) {
+                return error_res(403, 'No previous order found to edit.');
+            }
+            $order->update(['status' => 'pending']);
+            $cart = Cart::where('user_id', Auth::id())->latest()->first();
+            if ($cart) {
+                $order_item_product_ids = $order->items()->pluck('product_id')->toArray();
+                $cart->items()->onlyTrashed()->whereIn('product_id', $order_item_product_ids)->restore();
                 //  $order->items()->delete();
                 //  $order->delete();
-                 return success_res(200, 'Order is now editable. Don’t forget to resubmit to confirm changes.', $order);
-             } else {
-                 return error_res(403, 'No Cart Items found');
-             }
-         } catch (\Exception $e) {
-             return error_res(403, 'Failed to edit the order. Please try again.', [
-                 'error' => $e->getMessage(),
-             ]);
-         }
-     }
+                return success_res(200, 'Order is now editable. Don’t forget to resubmit to confirm changes.', $order);
+            } else {
+                return error_res(403, 'No Cart Items found');
+            }
+        } catch (\Exception $e) {
+            return error_res(403, 'Failed to edit the order. Please try again.', [
+                'error' => $e->getMessage(),
+            ]);
+        }
+    }
 
     /**
      * This function is used to to display all
@@ -106,18 +106,25 @@ class OrderController extends Controller
                         }]);
                 }]);
             if ($request->filled('emp_id')) {
-                $empIds = is_array($request->emp_id)
+                $emp_ids = is_array($request->emp_id)
                     ? $request->emp_id
                     : array_filter(explode(',', $request->emp_id));
-                if (!empty($empIds)) {
-                    $query->whereHas('user', function ($q) use ($empIds) {
-                        $q->whereIn('emp_id', $empIds);
+                if (!empty($emp_ids)) {
+                    $query->whereHas('user', function ($q) use ($emp_ids) {
+                        $q->whereIn('emp_id', $emp_ids);
                     });
                 }
             }
+
             if ($request->filled('order_number')) {
-                $orderNumber = $request->order_number;
-                $query->where('order_number', 'like', "%{$orderNumber}%");
+                $order_numbers = is_array($request->order_number)
+                    ? $request->order_number
+                    : array_filter(explode(',', $request->order_number));
+                if (!empty($order_numbers)) {
+                    $query->whereHas('user', function ($q) use ($order_numbers) {
+                        $q->whereIn('order_number', $order_numbers);
+                    });
+                }
             }
             if ($request->filled('start_date')) {
                 $query->whereDate('created_at', '>=', $request->start_date);
@@ -148,13 +155,13 @@ class OrderController extends Controller
     public function allUsers(Request $request)
     {
         try {
-            $query = User::select("id", "name", "email", "emp_id", "d_o_j", "location", "status")->where('is_admin',3);
+            $query = User::select("id", "name", "email", "emp_id", "d_o_j", "location", "status")->where('is_admin', 3);
 
             $has_empid_filter = $request->has('emp_id') && !empty($request->input('emp_id'));
             $has_name_filter = $request->has('name') && !empty($request->input('name'));
 
             if ($has_empid_filter || $has_name_filter) {
-                $query->where(function($q) use ($request, $has_empid_filter, $has_name_filter) {
+                $query->where(function ($q) use ($request, $has_empid_filter, $has_name_filter) {
                     if ($has_empid_filter) {
                         $emp_ids = $request->input('emp_id');
                         $q->whereIn('emp_id', $emp_ids);
@@ -226,7 +233,7 @@ class OrderController extends Controller
             }
             return $order;
         } else {
-             return error_res(200, 'You can place Order.');
+            return error_res(200, 'You can place Order.');
         }
     }
 
@@ -274,11 +281,11 @@ class OrderController extends Controller
             if ($check instanceof \Illuminate\Http\JsonResponse && $check->getStatusCode() !== 200) {
                 return $check;
             }
-              // Delete existing order and its items if any
+            // Delete existing order and its items if any
             $existing_order = Order::where('user_id', Auth::id())
-            ->where('status', 'pending')
-            ->latest()
-            ->first();
+                ->where('status', 'pending')
+                ->latest()
+                ->first();
             if ($existing_order) {
                 $existing_order->items()->delete();
                 $existing_order->delete();
