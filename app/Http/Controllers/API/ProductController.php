@@ -6,7 +6,7 @@ use Str;
 use App\Models\Product;
 use Illuminate\Http\Request;
 use App\Http\Controllers\Controller;
-use App\services\OrderUpdateService;
+use App\Services\OrderUpdateService;
 
 class ProductController extends Controller
 {
